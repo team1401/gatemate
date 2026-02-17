@@ -1,0 +1,17 @@
+version: '3.8'
+services:
+  gatemate:
+    build: .
+    container_name: gatemate
+    restart: unless-stopped
+    ports:
+      - "3111:3111"
+    volumes:
+      - gatemate-data:/app/data
+    env_file:
+      - .env
+    environment:
+      - DB_PATH=/app/data/gatemate.db
+
+volumes:
+  gatemate-data:
