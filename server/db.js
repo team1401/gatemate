@@ -137,6 +137,16 @@ for (const u of usersWithoutEmails) {
   db.prepare('INSERT OR IGNORE INTO user_emails (user_id, email, verified) VALUES (?, ?, 1)').run(u.id, u.email.toLowerCase());
 }
 
+// Migration: add layover window columns to overlaps table (for timeline visualization)
+try {
+  db.prepare("SELECT user_a_layover_start FROM overlaps LIMIT 1").get();
+} catch (e) {
+  db.exec("ALTER TABLE overlaps ADD COLUMN user_a_layover_start TEXT");
+  db.exec("ALTER TABLE overlaps ADD COLUMN user_a_layover_end TEXT");
+  db.exec("ALTER TABLE overlaps ADD COLUMN user_b_layover_start TEXT");
+  db.exec("ALTER TABLE overlaps ADD COLUMN user_b_layover_end TEXT");
+}
+
 // Ensure first user is admin
 db.prepare("UPDATE users SET is_admin = 1 WHERE id = 1").run();
 

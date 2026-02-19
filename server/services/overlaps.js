@@ -41,13 +41,13 @@ function detectOverlapsForUser(userId) {
   }
 
   const insertOverlap = db.prepare(`
-    INSERT INTO overlaps (user_a_id, user_b_id, flight_a_id, flight_b_id, airport, airport_name, overlap_start, overlap_end, overlap_minutes)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO overlaps (user_a_id, user_b_id, flight_a_id, flight_b_id, airport, airport_name, overlap_start, overlap_end, overlap_minutes, user_a_layover_start, user_a_layover_end, user_b_layover_start, user_b_layover_end)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   const insertMany = db.transaction((overlaps) => {
     for (const o of overlaps) {
-      insertOverlap.run(o.user_a_id, o.user_b_id, o.flight_a_id, o.flight_b_id, o.airport, o.airport_name, o.overlap_start, o.overlap_end, o.overlap_minutes);
+      insertOverlap.run(o.user_a_id, o.user_b_id, o.flight_a_id, o.flight_b_id, o.airport, o.airport_name, o.overlap_start, o.overlap_end, o.overlap_minutes, o.user_a_layover_start, o.user_a_layover_end, o.user_b_layover_start, o.user_b_layover_end);
     }
   });
 
@@ -76,7 +76,11 @@ function detectOverlapsForUser(userId) {
             airport_name: uw.airport_name || ow.airport_name || uw.airport,
             overlap_start: overlapStart.toISOString(),
             overlap_end: overlapEnd.toISOString(),
-            overlap_minutes: overlapMinutes
+            overlap_minutes: overlapMinutes,
+            user_a_layover_start: uw.start,
+            user_a_layover_end: uw.end,
+            user_b_layover_start: ow.start,
+            user_b_layover_end: ow.end
           });
         }
       }

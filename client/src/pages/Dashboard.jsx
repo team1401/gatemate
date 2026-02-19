@@ -4,6 +4,120 @@ import { api } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 import HelpModal from '../components/HelpModal';
 
+// Converts an ISO timestamp to a 0–100% position within a 24h day, anchored to midnight of the reference date
+function timeToPercent(isoStr, refDate) {
+  if (!isoStr || !refDate) return null;
+  const t = new Date(isoStr);
+  const midnight = new Date(refDate);
+  midnight.setHours(0, 0, 0, 0);
+  const msInDay = 24 * 60 * 60 * 1000;
+  return Math.min(100, Math.max(0, ((t - midnight) / msInDay) * 100));
+}
+
+function OverlapTimeline({ myStart, myEnd, otherStart, otherEnd, overlapStart, overlapEnd, otherName }) {
+  // Use overlapStart's date as the anchor for the 24h timeline
+  const refDate = overlapStart || myStart || otherStart;
+  if (!refDate) return null;
+
+  const aSP = timeToPercent(myStart, refDate);
+  const aEP = timeToPercent(myEnd, refDate);
+  const bSP = timeToPercent(otherStart, refDate);
+  const bEP = timeToPercent(otherEnd, refDate);
+  const oSP = timeToPercent(overlapStart, refDate);
+  const oEP = timeToPercent(overlapEnd, refDate);
+
+  // Colors: blue for you, orange for other, violet for overlap
+  const colorA = '#60a5fa';   // blue-400
+  const colorB = '#fb923c';   // orange-400
+  const colorO = '#a78bfa';   // violet-400
+
+  // Build connected segments: [first person solo] [together] [last person solo]
+  // All segments should be touching with no gaps
+  const segments = [];
+
+  if (aSP !== null && aEP !== null && bSP !== null && bEP !== null && oSP !== null && oEP !== null) {
+    // Who arrives first?
+    const earliestStart = Math.min(aSP, bSP);
+    const latestEnd = Math.max(aEP, bEP);
+
+    // Before overlap: whoever arrives first has solo time
+    if (oSP > earliestStart) {
+      const isYouFirst = aSP <= bSP;
+      segments.push({
+        left: earliestStart,
+        width: oSP - earliestStart,
+        color: isYouFirst ? colorA : colorB,
+        label: isYouFirst ? 'You' : (otherName || 'Other'),
+      });
+    }
+
+    // Overlap segment (together)
+    if (oEP > oSP) {
+      segments.push({
+        left: oSP,
+        width: oEP - oSP,
+        color: colorO,
+        label: 'Together',
+      });
+    }
+
+    // After overlap: whoever leaves last has solo time
+    if (latestEnd > oEP) {
+      const isYouLast = aEP >= bEP;
+      segments.push({
+        left: oEP,
+        width: latestEnd - oEP,
+        color: isYouLast ? colorA : colorB,
+        label: isYouLast ? 'You' : (otherName || 'Other'),
+      });
+    }
+  }
+
+  return (
+    <div className="mt-4">
+      {/* Time axis labels */}
+      <div className="flex justify-between text-xs text-slate-400 mb-1 select-none">
+        {['12AM', '6AM', '12PM', '6PM', '12AM'].map((t, i) => (
+          <span key={i}>{t}</span>
+        ))}
+      </div>
+
+      {/* Timeline bar */}
+      <div className="relative h-4 bg-slate-100 rounded-full overflow-hidden">
+        {/* Tick marks at 25%, 50%, 75% */}
+        {[25, 50, 75].map(pct => (
+          <div key={pct} className="absolute inset-y-0 w-px bg-white/60 z-10" style={{ left: `${pct}%` }} />
+        ))}
+
+        {/* Connected segments */}
+        {segments.map((seg, i) => (
+          <div
+            key={i}
+            className="absolute inset-y-0"
+            style={{ left: `${seg.left}%`, width: `${Math.max(seg.width, 0.5)}%`, backgroundColor: seg.color }}
+          />
+        ))}
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center gap-4 mt-2 flex-wrap">
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded-sm flex-shrink-0" style={{ backgroundColor: colorA }} />
+          <span className="text-xs text-slate-500">You</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded-sm flex-shrink-0" style={{ backgroundColor: colorB }} />
+          <span className="text-xs text-slate-500">{otherName || 'Other'}</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded-sm flex-shrink-0" style={{ backgroundColor: colorO }} />
+          <span className="text-xs text-slate-500">Together</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Modal({ title, onClose, children }) {
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
@@ -280,10 +394,15 @@ export default function Dashboard() {
                   </div>
                 </div>
               </div>
-              <div className="mt-3 bg-slate-100 rounded-full h-3 relative overflow-hidden">
-                <div className="absolute inset-y-0 bg-amber/40 rounded-full" style={{ left: '20%', right: '20%' }}></div>
-                <div className="absolute inset-y-0 bg-amber rounded-full" style={{ left: '30%', right: '30%' }}></div>
-              </div>
+              <OverlapTimeline
+                myStart={o.my_layover_start}
+                myEnd={o.my_layover_end}
+                otherStart={o.other_layover_start}
+                otherEnd={o.other_layover_end}
+                overlapStart={o.overlap_start}
+                overlapEnd={o.overlap_end}
+                otherName={o.other_user?.name?.split(' ')[0]}
+              />
             </div>
           ))}
         </div>
