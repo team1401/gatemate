@@ -2,8 +2,9 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('../db');
-const { SECRET, authenticate } = require('../middleware/auth');
-const { sendWelcomeEmail } = require('../services/emailSender');
+const crypto = require('crypto');
+const { SECRET, authenticate, requireAdmin } = require('../middleware/auth');
+const { sendWelcomeEmail, sendEmail } = require('../services/emailSender');
 const router = express.Router();
 
 router.post('/register', (req, res) => {
@@ -115,6 +116,51 @@ router.post('/logout', authenticate, (req, res) => {
   } catch (err) {
     console.error('Logout error:', err);
     res.status(500).json({ error: 'Logout failed' });
+  }
+});
+
+// Admin: reset any user's password
+router.post('/admin-reset', authenticate, requireAdmin, (req, res) => {
+  try {
+    const { email, newPassword } = req.body;
+    if (!email || !newPassword) return res.status(400).json({ error: 'Email and newPassword required' });
+    if (newPassword.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    const user = db.prepare('SELECT id FROM users WHERE email = ?').get(email.toLowerCase());
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    const hash = bcrypt.hashSync(newPassword, 10);
+    db.prepare('UPDATE users SET password = ?, token_version = COALESCE(token_version, 0) + 1 WHERE id = ?').run(hash, user.id);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Admin reset error:', err);
+    res.status(500).json({ error: 'Reset failed' });
+  }
+});
+
+// Self-service: forgot password - sends temp password via email
+router.post('/reset-password', (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email is required' });
+    // Always return success to avoid leaking user existence
+    const user = db.prepare('SELECT id, email, name FROM users WHERE email = ?').get(email.toLowerCase());
+    if (user) {
+      const tempPassword = crypto.randomBytes(4).toString('hex'); // 8-char hex
+      const hash = bcrypt.hashSync(tempPassword, 10);
+      db.prepare('UPDATE users SET password = ?, token_version = COALESCE(token_version, 0) + 1 WHERE id = ?').run(hash, user.id);
+      const firstName = user.name.split(' ')[0];
+      const appUrl = process.env.APP_URL || 'https://gatemate.app';
+      sendEmail(user.email, 'GateMate Password Reset', `
+        <h2>Password Reset</h2>
+        <p>Hi ${firstName},</p>
+        <p>Your temporary password is:</p>
+        <div class="highlight"><p style="font-size:24px;font-weight:bold;margin:0;">${tempPassword}</p></div>
+        <p>Please <a href="${appUrl}">log in</a> and change your password.</p>
+      `).catch(err => console.error('Reset email failed:', err.message));
+    }
+    res.json({ success: true, message: 'If that email exists, a temporary password has been sent.' });
+  } catch (err) {
+    console.error('Reset password error:', err);
+    res.status(500).json({ error: 'Reset failed' });
   }
 });
 

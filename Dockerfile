@@ -13,6 +13,7 @@ WORKDIR /app
 COPY package.json ./
 RUN npm install --production
 COPY server/ ./server/
+COPY reset-password.js ./
 COPY --from=frontend /app/client/dist ./client/dist
 COPY .env .env
 RUN mkdir -p /app/data && chown -R gatemate:gatemate /app

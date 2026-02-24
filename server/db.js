@@ -147,6 +147,13 @@ try {
   db.exec("ALTER TABLE overlaps ADD COLUMN user_b_layover_end TEXT");
 }
 
+// Migration: add imap_message_id column to pending_trips if missing
+try {
+  db.prepare("SELECT imap_message_id FROM pending_trips LIMIT 1").get();
+} catch (e) {
+  db.exec("ALTER TABLE pending_trips ADD COLUMN imap_message_id TEXT");
+}
+
 // Ensure first user is admin
 db.prepare("UPDATE users SET is_admin = 1 WHERE id = 1").run();
 

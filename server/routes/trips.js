@@ -153,6 +153,14 @@ router.post('/pending/:id/accept', authenticate, async (req, res) => {
     // Mark pending as accepted
     db.prepare("UPDATE pending_trips SET status = 'accepted' WHERE id = ?").run(pending.id);
 
+    // Delete the source email from inbox (async, non-blocking)
+    if (pending.imap_message_id) {
+      const { deleteEmailFromInbox } = require('../services/emailDeleter');
+      deleteEmailFromInbox(pending.imap_message_id).catch(e => 
+        console.error('[Trip Accept] Email deletion failed:', e.message)
+      );
+    }
+
     // Detect overlaps
     const { detectOverlapsForUser } = require('../services/overlaps');
     detectOverlapsForUser(req.user.id);
@@ -176,6 +184,15 @@ router.post('/pending/:id/reject', authenticate, (req, res) => {
     if (!pending) return res.status(404).json({ error: 'Pending trip not found' });
 
     db.prepare("UPDATE pending_trips SET status = 'rejected' WHERE id = ?").run(pending.id);
+
+    // Delete the source email from inbox (async, non-blocking)
+    if (pending.imap_message_id) {
+      const { deleteEmailFromInbox } = require('../services/emailDeleter');
+      deleteEmailFromInbox(pending.imap_message_id).catch(e => 
+        console.error('[Trip Reject] Email deletion failed:', e.message)
+      );
+    }
+
     res.json({ success: true });
   } catch (err) {
     console.error('Reject pending trip error:', err);
