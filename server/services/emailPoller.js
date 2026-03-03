@@ -37,15 +37,16 @@ function stripHtml(html) {
     .replace(/&lt;/gi, '<')
     .replace(/&gt;/gi, '>')
     .replace(/&#\d+;/g, '')
+    .replace(/https?:\/\/\S+/gi, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
 
 function getEmailBody(parsed) {
-  if (parsed.text) return parsed.text;
+  // Prefer HTML first — airline itineraries are often only complete in HTML templates
   if (parsed.html) return stripHtml(parsed.html);
   if (parsed.textAsHtml) return stripHtml(parsed.textAsHtml);
-  return '';
+  return parsed.text || '';
 }
 
 function getSenderEmail(parsed) {
@@ -114,7 +115,8 @@ async function processEmail(parsed) {
   console.log(`[EmailPoller] Processing email from ${senderEmail} (user ${user.id})`);
 
   try {
-    const flights = await extractFlights(body);
+    const subject = parsed.subject || '';
+    const flights = await extractFlights(body, subject);
     if (flights.length === 0) {
       console.log(`[EmailPoller] No flights extracted from email by ${senderEmail}`);
       markProcessed(messageId);

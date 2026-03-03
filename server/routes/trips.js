@@ -128,26 +128,23 @@ router.post('/pending/:id/accept', authenticate, async (req, res) => {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
-    // Try to enrich each flight via AirLabs, fall back to raw data
+    // Use email-extracted data directly — it's the ground truth from the booking confirmation
+    const airlineCodes = { WN: 'Southwest', AA: 'American', DL: 'Delta', UA: 'United', B6: 'JetBlue', NK: 'Spirit', F9: 'Frontier', AS: 'Alaska', HA: 'Hawaiian' };
     for (const f of flights) {
-      let enriched = null;
-      try {
-        const result = await lookupFlight(f.flight_number, f.date, f.departure_airport, f.arrival_airport);
-        if (result.flight) enriched = result.flight;
-      } catch (e) {
-        console.log(`Could not enrich ${f.flight_number}: ${e.message}`);
-      }
-
-      if (enriched) {
-        insertFlight.run(tripId, enriched.flight_number, enriched.flight_date, enriched.airline_name || '',
-          enriched.departure_airport, enriched.departure_airport_name || '', enriched.departure_time,
-          enriched.arrival_airport, enriched.arrival_airport_name || '', enriched.arrival_time, enriched.status || 'scheduled');
-      } else {
-        // Use raw extracted data
-        insertFlight.run(tripId, f.flight_number, f.date, '',
-          f.departure_airport || '', '', f.departure_time ? `${f.date} ${f.departure_time}` : '',
-          f.arrival_airport || '', '', f.arrival_time ? `${f.date} ${f.arrival_time}` : '', 'scheduled');
-      }
+      const code = f.flight_number.replace(/\d+/g, '');
+      insertFlight.run(
+        tripId,
+        f.flight_number,
+        f.date,
+        airlineCodes[code] || code,
+        f.departure_airport || '',
+        f.departure_airport || '',
+        f.departure_time ? `${f.date} ${f.departure_time}` : '',
+        f.arrival_airport || '',
+        f.arrival_airport || '',
+        f.arrival_time ? `${f.date} ${f.arrival_time}` : '',
+        'scheduled'
+      );
     }
 
     // Mark pending as accepted

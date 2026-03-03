@@ -2,15 +2,30 @@ const fetch = require('node-fetch');
 const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434';
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3.2:3b';
 
-function buildPrompt(text) {
-  // Sanitize to prevent prompt injection
-  var sanitized = text
-    .substring(0, 4000)
+function cleanEmailText(text) {
+  // Strip tracking URLs and noise before truncating — airline emails are 90% URL garbage
+  return text
+    .replace(/https?:\/\/\S+/gi, '')           // remove all URLs
+    .replace(/\[image:[^\]]*\]/gi, '')          // remove [image: ...] tags
+    .replace(/<[^>]+>/g, ' ')                   // remove HTML tags
+    .replace(/[A-Za-z0-9+/=]{60,}/g, '')        // remove base64-like blobs
+    .replace(/\n{3,}/g, '\n\n')                 // collapse excessive newlines
+    .replace(/[ \t]{2,}/g, ' ')                 // collapse spaces
+    .trim();
+}
+
+function buildPrompt(text, subject) {
+  // Clean email text to remove URL noise, then sanitize for injection
+  var cleaned = cleanEmailText(text);
+  var sanitized = cleaned
+    .substring(0, 8000)
     .replace(/ignore previous instructions/gi, '')
     .replace(/ignore all previous/gi, '')
     .replace(/system prompt/gi, '')
     .replace(/new instructions/gi, '')
     .replace(/<script/gi, '');
+  
+  var subjectLine = subject ? '\nEmail subject: ' + subject.substring(0, 200) + '\n' : '';
   
   return `You are a flight data extractor. Your ONLY task is to extract flight information.
 
@@ -26,7 +41,7 @@ Expected format:
 Use 2-letter IATA codes: DELTA=DL, AMERICAN=AA, UNITED=UA, SOUTHWEST=WN, JETBLUE=B6, SPIRIT=NK, FRONTIER=F9, ALASKA=AS.
 
 Email to analyze:
----
+---${subjectLine}
 ${sanitized}
 ---
 
@@ -51,8 +66,8 @@ function parseAI(c) {
   } catch(e) { return []; }
 }
 
-async function extractFlightsAI(text) {
-  var p = buildPrompt(text);
+async function extractFlightsAI(text, subject) {
+  var p = buildPrompt(text, subject);
   var r = await fetch(OLLAMA_URL + '/api/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -72,8 +87,46 @@ async function extractFlightsAI(text) {
   throw new Error('Ollama returned no flights');
 }
 
-function extractFlightsRegex(text) {
-  var t = text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+function to24h(hhmm, ampm) {
+  if (!hhmm) return '';
+  var p = hhmm.split(':');
+  var h = parseInt(p[0], 10);
+  var m = p[1] || '00';
+  var ap = (ampm || '').toUpperCase();
+  if (ap === 'PM' && h !== 12) h += 12;
+  if (ap === 'AM' && h === 12) h = 0;
+  return String(h).padStart(2, '0') + ':' + m.padStart(2, '0');
+}
+
+function extractSouthwestBlocks(text) {
+  var out = [];
+  var blocks = text.match(/Flight\s*\d+\s*:[\s\S]*?(?=Flight\s*\d+\s*:|Payment information|Your ticket|$)/gi) || [];
+  blocks.forEach(function(b) {
+    var fn = b.match(/FLIGHT\s*#\s*(\d{1,4})/i);
+    var d = b.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+    var dep = b.match(/DEPARTS\s*([A-Z]{3})\s*(\d{1,2}:\d{2})\s*(AM|PM)/i);
+    var arr = b.match(/ARRIVES\s*([A-Z]{3})\s*(\d{1,2}:\d{2})\s*(AM|PM)/i);
+    if (!fn || !d) return;
+    out.push({
+      flight_number: 'WN' + fn[1],
+      date: d[3] + '-' + d[1] + '-' + d[2],
+      departure_airport: dep ? dep[1] : '',
+      arrival_airport: arr ? arr[1] : '',
+      departure_time: dep ? to24h(dep[2], dep[3]) : '',
+      arrival_time: arr ? to24h(arr[2], arr[3]) : ''
+    });
+  });
+  return out;
+}
+
+function extractFlightsRegex(text, subject) {
+  var cleaned = cleanEmailText(text);
+  var t = cleaned.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+
+  // Airline-specific parser first (Southwest templates are highly structured)
+  var southwest = extractSouthwestBlocks(cleaned);
+  if (southwest.length > 0) return southwest;
+
   var names = { DELTA: 'DL', AMERICAN: 'AA', UNITED: 'UA', SOUTHWEST: 'WN', JETBLUE: 'B6', SPIRIT: 'NK', FRONTIER: 'F9', ALASKA: 'AS' };
   var codes = { AA:1, UA:1, DL:1, WN:1, B6:1, NK:1, F9:1, AS:1, HA:1 };
   var pat = /\b(?:(DELTA|AMERICAN|UNITED|SOUTHWEST|JETBLUE|SPIRIT|FRONTIER|ALASKA)\s+(\d{1,4})|([A-Z]{2})\s*(\d{1,4}))\b/gi;
@@ -84,12 +137,20 @@ function extractFlightsRegex(text) {
     else if (m[3] && codes[m[3].toUpperCase()]) fn = m[3].toUpperCase() + m[4];
     if (fn && !seen[fn]) { seen[fn] = 1; fns.push(fn); }
   }
+
   var mo = { JAN:'01', FEB:'02', MAR:'03', APR:'04', MAY:'05', JUN:'06', JUL:'07', AUG:'08', SEP:'09', OCT:'10', NOV:'11', DEC:'12' };
-  var dates = [], dp = /(\d{1,2})(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)(\d{2,4})/gi;
+  var dates = [];
+  var dp = /(\d{1,2})(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)(\d{2,4})/gi;
   while ((m = dp.exec(t)) !== null) {
     var yr = m[3].length === 2 ? '20' + m[3] : m[3];
     dates.push(yr + '-' + mo[m[2].toUpperCase()] + '-' + m[1].padStart(2, '0'));
   }
+  // Also support MM/DD/YYYY
+  var md = /(\d{2})\/(\d{2})\/(\d{4})/g;
+  while ((m = md.exec(t)) !== null) {
+    dates.push(m[3] + '-' + m[1] + '-' + m[2]);
+  }
+
   return fns.map(function(fn) {
     return { flight_number: fn, date: dates[0] || '', departure_airport: '', arrival_airport: '', departure_time: '', arrival_time: '' };
   }).filter(function(f) { return f.date; });
@@ -123,13 +184,23 @@ function dedup(a) {
   });
 }
 
-async function extractFlights(text) {
-  try {
-    return dedup(await extractFlightsAI(text));
-  } catch(e) {
-    console.warn('[Extractor] AI failed, regex fallback:', e.message);
-    return dedup(extractFlightsRegex(text));
+async function extractFlights(text, subject) {
+  // Try deterministic regex/template parsers first — they're more reliable for structured airline emails
+  var regexResults = extractFlightsRegex(text, subject);
+  if (regexResults.length > 0) {
+    console.log('[Extractor] Regex extracted', regexResults.length, 'flights');
+    return dedup(regexResults);
   }
+
+  // Fall back to AI for unstructured emails
+  try {
+    var aiResults = await extractFlightsAI(text, subject);
+    if (aiResults.length > 0) return dedup(aiResults);
+  } catch(e) {
+    console.warn('[Extractor] AI failed:', e.message);
+  }
+
+  return [];
 }
 
 module.exports = { extractFlights: extractFlights };

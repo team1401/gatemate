@@ -13,6 +13,7 @@ export default function AddTrip() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [scheduleWarning, setScheduleWarning] = useState('');
 
   const handleLookup = async (e, depAirport) => {
     if (e) e.preventDefault();
@@ -21,12 +22,14 @@ export default function AddTrip() {
     setLoading(true);
     setLookupResult(null);
     setRouteOptions(null);
+    setScheduleWarning('');
     try {
       const data = await api.lookupFlight(flightNumber, flightDate, depAirport || undefined);
       if (data.multiple) {
         setRouteOptions(data.options);
       } else {
         setLookupResult(data.flight);
+        if (data.warning) setScheduleWarning(data.warning);
       }
     } catch (err) {
       setError(err.message);
@@ -47,6 +50,7 @@ export default function AddTrip() {
     setLookupResult(null);
     setFlightNumber('');
     setFlightDate('');
+    setScheduleWarning('');
   };
 
   const removeFlight = (index) => {
@@ -118,6 +122,12 @@ export default function AddTrip() {
         </form>
 
         {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded p-3 mt-3">{error}</div>}
+
+        {scheduleWarning && (
+          <div className="bg-amber-50 border border-amber-300 text-amber-800 text-sm rounded p-3 mt-3">
+            ⚠️ {scheduleWarning}
+          </div>
+        )}
 
         {/* Multiple route options — user picks the correct leg */}
         {routeOptions && (

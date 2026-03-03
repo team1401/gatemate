@@ -90,21 +90,66 @@ async function lookupFlight(flightNumber, flightDate, depAirport, arrAirport) {
           
           // Filter to routes that operate on the requested day
           let dayMatches = routes.filter(r => r.days && r.days.includes(dayOfWeek));
+          let warning = null;
           
           if (dayMatches.length === 0) {
             const availDays = routes[0].days ? routes[0].days.join(', ') : 'unknown days';
-            throw new Error(`${normalized} doesn't operate on ${dayOfWeek}. This flight runs on: ${availDays}`);
+            // Don't hard-block — schedule data may be stale. Use all routes but add a warning.
+            dayMatches = routes;
+            warning = `${normalized} typically runs on ${availDays}, not ${dayOfWeek}. If your booking is confirmed, this may be a schedule change.`;
           }
 
           // If departure airport specified, filter further
           if (depFilter) {
             const filtered = dayMatches.filter(r => r.dep_iata === depFilter);
-            if (filtered.length > 0) dayMatches = filtered;
+            if (filtered.length > 0) {
+              dayMatches = filtered;
+            } else {
+              // AirLabs doesn't know this route — use email-extracted data directly
+              console.log(`No route match for ${normalized} dep=${depFilter}, using extracted data`);
+              const synth = {
+                flight: {
+                  flight_number: normalized,
+                  flight_date: dateStr,
+                  airline_name: normalized.substring(0, 2),
+                  departure_airport: depFilter,
+                  departure_airport_name: depFilter,
+                  departure_time: '',
+                  arrival_airport: arrFilter || '',
+                  arrival_airport_name: arrFilter || '',
+                  arrival_time: '',
+                  status: 'scheduled'
+                }
+              };
+              cacheResult(cacheKey, dateStr, synth);
+              return synth;
+            }
           }
           // If arrival airport specified, filter further
           if (arrFilter) {
             const filtered = dayMatches.filter(r => r.arr_iata === arrFilter);
-            if (filtered.length > 0) dayMatches = filtered;
+            if (filtered.length > 0) {
+              dayMatches = filtered;
+            } else if (!depFilter) {
+              // Same fallback for arrival-only filter
+              console.log(`No route match for ${normalized} arr=${arrFilter}, using extracted data`);
+              const synth = {
+                flight: {
+                  flight_number: normalized,
+                  flight_date: dateStr,
+                  airline_name: normalized.substring(0, 2),
+                  departure_airport: depFilter || '',
+                  departure_airport_name: depFilter || '',
+                  departure_time: '',
+                  arrival_airport: arrFilter,
+                  arrival_airport_name: arrFilter,
+                  arrival_time: '',
+                  status: 'scheduled'
+                }
+              };
+              cacheResult(cacheKey, dateStr, synth);
+              return synth;
+            }
           }
 
           // If multiple legs match and no dep filter, return all options for user to pick
@@ -113,14 +158,13 @@ async function lookupFlight(flightNumber, flightDate, depAirport, arrAirport) {
             return { multiple: true, options };
           }
 
-          const result = { flight: formatRouteFlight(dayMatches[0], dateStr) };
+          const result = { flight: formatRouteFlight(dayMatches[0], dateStr), warning };
           cacheResult(cacheKey, dateStr, result);
           return result;
         }
       }
     }
   } catch (e) {
-    if (e.message.includes("doesn't operate")) throw e;
     console.error('Routes lookup failed:', e.message);
   }
 

@@ -47,19 +47,7 @@ router.post('/emails', authenticate, (req, res) => {
     if (!email || !email.includes('@')) return res.status(400).json({ error: 'Valid email required' });
     const normalized = email.toLowerCase().trim();
     
-    // Check domain whitelist (same logic as registration)
-    const setting = db.prepare("SELECT value FROM settings WHERE key = 'allowed_domains'").get();
-    if (setting) {
-      const domains = JSON.parse(setting.value);
-      if (domains.length > 0) {
-        const emailDomain = normalized.split('@')[1];
-        if (!domains.includes(emailDomain)) {
-          return res.status(403).json({
-            error: 'Secondary emails must be from approved domains'
-          });
-        }
-      }
-    }
+    // No domain restriction on secondary emails - users need personal emails for flight forwarding
     
     const existing = db.prepare('SELECT id FROM user_emails WHERE email = ?').get(normalized);
     if (existing) {
