@@ -1,6 +1,11 @@
 const express = require('express');
 const db = require('../db');
 const { authenticate } = require('../middleware/auth');
+const {
+  createVerificationToken,
+  releaseStaleClaim,
+  sendVerificationEmail,
+} = require('../services/emailVerification');
 const router = express.Router();
 
 // List all users (id, name, email — no passwords)
@@ -49,17 +54,39 @@ router.post('/emails', authenticate, (req, res) => {
     
     // No domain restriction on secondary emails - users need personal emails for flight forwarding
     
-    const existing = db.prepare('SELECT id FROM user_emails WHERE email = ?').get(normalized);
-    if (existing) {
-      // Generic message - don't reveal email exists
+    if (normalized.length > 254) return res.status(400).json({ error: 'Email must be at most 254 characters' });
+
+    // Reject addresses already owned (verified or with a live verification link).
+    // Generic message - don't reveal email exists
+    if (!releaseStaleClaim(normalized)) {
       return res.status(400).json({ error: 'Failed to add email. Please contact support if you believe this is an error.' });
     }
-    
-    // Changed verified from 1 to 0 - require verification
+
+    // Stored unverified; only linked to this account once the emailed token is redeemed
     const result = db.prepare('INSERT INTO user_emails (user_id, email, verified) VALUES (?, ?, 0)').run(req.user.id, normalized);
-    res.json({ id: result.lastInsertRowid, email: normalized, verified: 0, is_primary: false });
+    const account = db.prepare('SELECT id, email, name FROM users WHERE id = ?').get(req.user.id);
+    const token = createVerificationToken(result.lastInsertRowid);
+    sendVerificationEmail(normalized, token, account, false)
+      .catch(err => console.error('Failed to send verification email:', err.message));
+    res.json({ id: result.lastInsertRowid, email: normalized, verified: 0, is_primary: false, verification_sent: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to add email' });
+  }
+});
+
+// Resend the verification link for an unverified secondary email
+router.post('/emails/:id/resend', authenticate, (req, res) => {
+  try {
+    const entry = db.prepare('SELECT id, email, verified FROM user_emails WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
+    if (!entry) return res.status(404).json({ error: 'Email not found' });
+    if (entry.verified) return res.status(400).json({ error: 'Email already verified' });
+    const account = db.prepare('SELECT id, email, name FROM users WHERE id = ?').get(req.user.id);
+    const token = createVerificationToken(entry.id);
+    sendVerificationEmail(entry.email, token, account, false)
+      .catch(err => console.error('Failed to send verification email:', err.message));
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to resend verification' });
   }
 });
 

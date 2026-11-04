@@ -23,9 +23,12 @@ function authenticate(req, res, next) {
     
     // Check token version for revocation support
     const db = require('../db');
-    const user = db.prepare('SELECT token_version FROM users WHERE id = ?').get(payload.id);
+    const user = db.prepare('SELECT token_version, email_verified FROM users WHERE id = ?').get(payload.id);
     if (!user || (payload.token_version !== undefined && user.token_version !== payload.token_version)) {
       return res.status(401).json({ error: 'Token revoked' });
+    }
+    if (!user.email_verified) {
+      return res.status(403).json({ error: 'Email address not verified', verification_required: true });
     }
     
     req.user = payload;

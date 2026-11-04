@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function Register() {
@@ -8,8 +8,8 @@ export default function Register() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [submittedEmail, setSubmittedEmail] = useState('');
   const { register } = useAuth();
-  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -17,7 +17,7 @@ export default function Register() {
     setLoading(true);
     try {
       await register(email, password, name);
-      navigate('/');
+      setSubmittedEmail(email);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -36,6 +36,18 @@ export default function Register() {
           <p className="text-slate-400 text-sm">Join your team</p>
         </div>
 
+        {submittedEmail ? (
+          <div className="bg-white rounded-lg p-6 shadow-xl">
+            <h2 className="text-lg font-semibold text-navy mb-2">Check your email</h2>
+            <p className="text-sm text-slate-600 mb-4">
+              We sent a verification link to <strong>{submittedEmail}</strong>. Click it to activate your account, then sign in.
+              The link expires in 24 hours.
+            </p>
+            <Link to="/login" className="block text-center w-full bg-navy text-white font-semibold py-2.5 rounded hover:bg-navy/90 transition-colors">
+              Go to Sign In
+            </Link>
+          </div>
+        ) : (
         <form onSubmit={handleSubmit} className="bg-white rounded-lg p-6 shadow-xl">
           <h2 className="text-lg font-semibold text-navy mb-4">Create Account</h2>
           
@@ -69,6 +81,7 @@ export default function Register() {
             Already have an account? <Link to="/login" className="text-amber font-medium hover:underline">Sign In</Link>
           </p>
         </form>
+        )}
       </div>
     </div>
   );
