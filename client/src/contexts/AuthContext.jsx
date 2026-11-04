@@ -25,9 +25,8 @@ export function AuthProvider({ children }) {
   };
 
   const register = async (email, password, name) => {
-    const data = await api.register(email, password, name);
-    localStorage.setItem('gatemate_token', data.token);
-    setUser(data.user);
+    // Registration does not sign in; the account must be verified via the emailed link first
+    return api.register(email, password, name);
   };
 
   const logout = () => {

@@ -11,13 +11,19 @@ async function request(path, options = {}) {
   
   const res = await fetch(`${BASE}${path}`, { ...options, headers });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Request failed');
+  if (!res.ok) {
+    const err = new Error(data.error || 'Request failed');
+    err.data = data;
+    throw err;
+  }
   return data;
 }
 
 export const api = {
   login: (email, password) => request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
   register: (email, password, name) => request('/auth/register', { method: 'POST', body: JSON.stringify({ email, password, name }) }),
+  verifyEmail: (token) => request('/auth/verify-email', { method: 'POST', body: JSON.stringify({ token }) }),
+  resendVerification: (email) => request('/auth/resend-verification', { method: 'POST', body: JSON.stringify({ email }) }),
   resetPassword: (email) => request('/auth/reset-password', { method: 'POST', body: JSON.stringify({ email }) }),
   me: () => request('/auth/me'),
   stats: () => request('/users/stats'),
@@ -34,6 +40,7 @@ export const api = {
   getConfig: () => request('/config'),
   getEmails: () => request('/users/emails'),
   addEmail: (email) => request('/users/emails', { method: 'POST', body: JSON.stringify({ email }) }),
+  resendEmailVerification: (id) => request(`/users/emails/${id}/resend`, { method: 'POST' }),
   removeEmail: (id) => request(`/users/emails/${id}`, { method: 'DELETE' }),
   dismissOnboarding: () => request('/users/onboarding', { method: 'PUT' }),
 };

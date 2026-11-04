@@ -129,12 +129,33 @@ db.exec(`
   );
 `);
 
+// Migration: add email_verified column to users. Accounts that existed before
+// verification was introduced are grandfathered in as verified.
+try {
+  db.prepare("SELECT email_verified FROM users LIMIT 1").get();
+} catch (e) {
+  db.exec("ALTER TABLE users ADD COLUMN email_verified INTEGER DEFAULT 0");
+  db.exec("UPDATE users SET email_verified = 1");
+}
+
+// Single-use, expiring tokens proving ownership of a user_emails address
+db.exec(`
+  CREATE TABLE IF NOT EXISTS email_verification_tokens (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_email_id INTEGER NOT NULL REFERENCES user_emails(id) ON DELETE CASCADE,
+    token_hash TEXT NOT NULL UNIQUE,
+    expires_at TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_email_verification_tokens_user_email ON email_verification_tokens(user_email_id);
+`);
+
 // Migration: populate user_emails for existing users who don't have entries
 const usersWithoutEmails = db.prepare(`
-  SELECT id, email FROM users WHERE id NOT IN (SELECT user_id FROM user_emails)
+  SELECT id, email, email_verified FROM users WHERE id NOT IN (SELECT user_id FROM user_emails)
 `).all();
 for (const u of usersWithoutEmails) {
-  db.prepare('INSERT OR IGNORE INTO user_emails (user_id, email, verified) VALUES (?, ?, 1)').run(u.id, u.email.toLowerCase());
+  db.prepare('INSERT OR IGNORE INTO user_emails (user_id, email, verified) VALUES (?, ?, ?)').run(u.id, u.email.toLowerCase(), u.email_verified ? 1 : 0);
 }
 
 // Migration: add layover window columns to overlaps table (for timeline visualization)

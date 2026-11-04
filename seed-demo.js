@@ -247,7 +247,7 @@ console.log('🌱 Seeding GateMate demo data...\n');
 
 // Insert users
 const insertUser = db.prepare(`
-  INSERT OR IGNORE INTO users (email, password, name, is_admin) VALUES (?, ?, ?, ?)
+  INSERT OR IGNORE INTO users (email, password, name, is_admin, email_verified) VALUES (?, ?, ?, ?, 1)
 `);
 const insertUserEmail = db.prepare(`
   INSERT OR IGNORE INTO user_emails (user_id, email, verified) VALUES (?, ?, 1)
