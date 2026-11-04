@@ -49,5 +49,3 @@ npm run dev:client
 - SQLite via better-sqlite3
 - Docker multi-stage build
 
-## Deployment
-Deployed on plex at http://100.97.65.28:3111
