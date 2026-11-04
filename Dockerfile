@@ -21,5 +21,6 @@ USER gatemate
 VOLUME /app/data
 ENV DB_PATH=/app/data/gatebump.db
 ENV PORT=3111
+ENV NODE_ENV=production
 EXPOSE 3111
 CMD ["node", "server/index.js"]
