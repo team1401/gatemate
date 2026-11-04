@@ -31,14 +31,6 @@ const createVerificationToken = db.transaction((userEmailId) => {
   return token;
 });
 
-function hasActiveTokenForEmail(email) {
-  return !!db.prepare(`
-    SELECT 1 FROM email_verification_tokens t
-    JOIN user_emails ue ON ue.id = t.user_email_id
-    WHERE ue.email = ? AND t.expires_at > datetime('now')
-  `).get(email);
-}
-
 /**
  * Redeem a verification token. Tokens are single-use: on success every token for
  * that address is deleted. Returns { userId, email, isPrimary } or null.
@@ -64,20 +56,26 @@ const redeemVerificationToken = db.transaction((token) => {
 });
 
 /**
- * Make an address available to be claimed. Unverified claims whose verification
- * link has expired are released so they cannot squat an address forever; verified
- * claims and claims with a live link are kept. Returns true if the address is free.
+ * Make an address available to be claimed. An unverified claim is released once it
+ * is older than the token lifetime, measured from when the claim was made so that
+ * resending links cannot extend it; verified claims are kept. Returns true if the
+ * address is free.
  */
 const releaseStaleClaim = db.transaction((email) => {
-  const owner = db.prepare('SELECT id, email_verified FROM users WHERE email = ?').get(email);
+  const cutoff = `-${TOKEN_TTL_HOURS} hours`;
+  const owner = db.prepare(
+    "SELECT id, email_verified, created_at <= datetime('now', ?) AS stale FROM users WHERE email = ?"
+  ).get(cutoff, email);
   if (owner) {
-    if (owner.email_verified || hasActiveTokenForEmail(email)) return false;
+    if (owner.email_verified || !owner.stale) return false;
     db.prepare('DELETE FROM pending_trips WHERE user_id = ?').run(owner.id);
     db.prepare('DELETE FROM users WHERE id = ?').run(owner.id);
   }
-  const claim = db.prepare('SELECT id, verified FROM user_emails WHERE email = ?').get(email);
+  const claim = db.prepare(
+    "SELECT id, verified, created_at <= datetime('now', ?) AS stale FROM user_emails WHERE email = ?"
+  ).get(cutoff, email);
   if (claim) {
-    if (claim.verified || hasActiveTokenForEmail(email)) return false;
+    if (claim.verified || !claim.stale) return false;
     db.prepare('DELETE FROM user_emails WHERE id = ?').run(claim.id);
   }
   return true;
