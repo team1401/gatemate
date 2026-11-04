@@ -157,7 +157,7 @@ router.post('/reset-password', (req, res) => {
       const token = crypto.randomBytes(32).toString('hex');
       const now = Date.now();
       db.transaction(() => {
-        db.prepare('DELETE FROM password_resets WHERE user_id = ? AND used_at IS NULL').run(user.id);
+        db.prepare('DELETE FROM password_resets WHERE user_id = ? AND used_at IS NULL AND expires_at <= ?').run(user.id, now);
         db.prepare('INSERT INTO password_resets (user_id, token_hash, expires_at) VALUES (?, ?, ?)')
           .run(user.id, hashResetToken(token), now + RESET_TOKEN_TTL_MS);
       })();
