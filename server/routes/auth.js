@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const db = require('../db');
 const crypto = require('crypto');
 const { SECRET, authenticate, requireAdmin } = require('../middleware/auth');
-const { sendWelcomeEmail, sendEmail } = require('../services/emailSender');
+const { sendWelcomeEmail, sendEmail, escapeHtml } = require('../services/emailSender');
 const {
   createVerificationToken,
   redeemVerificationToken,
@@ -209,10 +209,10 @@ router.post('/reset-password', (req, res) => {
       const appUrl = process.env.APP_URL || 'https://gatemate.app';
       sendEmail(user.email, 'GateMate Password Reset', `
         <h2>Password Reset</h2>
-        <p>Hi ${firstName},</p>
+        <p>Hi ${escapeHtml(firstName)},</p>
         <p>Your temporary password is:</p>
         <div class="highlight"><p style="font-size:24px;font-weight:bold;margin:0;">${tempPassword}</p></div>
-        <p>Please <a href="${appUrl}">log in</a> and change your password.</p>
+        <p>Please <a href="${escapeHtml(appUrl)}">log in</a> and change your password.</p>
       `).catch(err => console.error('Reset email failed:', err.message));
     }
     res.json({ success: true, message: 'If that email exists, a temporary password has been sent.' });

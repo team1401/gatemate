@@ -5,6 +5,26 @@ const { lookupFlight } = require('../services/flightapi');
 const { detectOverlapsForUser } = require('../services/overlaps');
 const router = express.Router();
 
+const AIRPORT_CODE_RE = /^[A-Za-z]{3,4}$/;
+const AIRPORT_NAME_RE = /^[\p{L}\p{N}\p{Pd} .,'()\/&]*$/u;
+const AIRPORT_NAME_MAX = 100;
+
+function validateFlightAirports(f) {
+  if (!f || typeof f !== 'object') return 'Invalid flight';
+  for (const side of ['departure', 'arrival']) {
+    const code = f[`${side}_airport`];
+    if (typeof code !== 'string' || !AIRPORT_CODE_RE.test(code)) {
+      return `Invalid ${side} airport code`;
+    }
+    const name = f[`${side}_airport_name`];
+    if (name === undefined || name === null || name === '') continue;
+    if (typeof name !== 'string' || name.length > AIRPORT_NAME_MAX || !AIRPORT_NAME_RE.test(name)) {
+      return `Invalid ${side} airport name`;
+    }
+  }
+  return null;
+}
+
 // Lookup a flight (preview before adding)
 router.post('/lookup', authenticate, async (req, res) => {
   try {
@@ -41,6 +61,10 @@ router.post('/', authenticate, async (req, res) => {
     if (flights.length > 50) {
       return res.status(400).json({ error: 'Maximum 50 flights per trip' });
     }
+    for (const f of flights) {
+      const airportError = validateFlightAirports(f);
+      if (airportError) return res.status(400).json({ error: airportError });
+    }
 
     const tripResult = db.prepare('INSERT INTO trips (user_id, name) VALUES (?, ?)').run(req.user.id, name || 'Untitled Trip');
     const tripId = tripResult.lastInsertRowid;
@@ -53,8 +77,8 @@ router.post('/', authenticate, async (req, res) => {
     const insertAll = db.transaction((flights) => {
       for (const f of flights) {
         insertFlight.run(tripId, f.flight_number, f.flight_date, f.airline_name || '',
-          f.departure_airport, f.departure_airport_name || '', f.departure_time,
-          f.arrival_airport, f.arrival_airport_name || '', f.arrival_time, f.status || 'scheduled');
+          f.departure_airport.toUpperCase(), f.departure_airport_name || '', f.departure_time,
+          f.arrival_airport.toUpperCase(), f.arrival_airport_name || '', f.arrival_time, f.status || 'scheduled');
       }
     });
 

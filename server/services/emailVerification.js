@@ -1,20 +1,11 @@
 const crypto = require('crypto');
 const db = require('../db');
-const { sendEmail } = require('./emailSender');
+const { sendEmail, escapeHtml } = require('./emailSender');
 
 const TOKEN_TTL_HOURS = 24;
 
 function hashToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
-}
-
-function escapeHtml(str) {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
 }
 
 function getAppUrl() {
@@ -109,7 +100,7 @@ async function sendVerificationEmail(to, token, account, isPrimary) {
       <h2>Confirm your email</h2>
       <p>Hi ${firstName},</p>
       <p>Please confirm that this is your email address to activate your GateMate account.</p>
-      <a href="${link}" class="cta">Verify Email →</a>
+      <a href="${escapeHtml(link)}" class="cta">Verify Email →</a>
       <p>This link expires in ${TOKEN_TTL_HOURS} hours and can only be used once.</p>
       <p>If you didn't create a GateMate account, you can ignore this email.</p>
     `
@@ -117,7 +108,7 @@ async function sendVerificationEmail(to, token, account, isPrimary) {
       <h2>Confirm your email</h2>
       <p><strong>${escapeHtml(account.name)}</strong> (${escapeHtml(account.email)}) asked to add this address to their GateMate account.
       Once confirmed, flight confirmations forwarded from this address will be added to that account.</p>
-      <a href="${link}" class="cta">Verify Email →</a>
+      <a href="${escapeHtml(link)}" class="cta">Verify Email →</a>
       <p>This link expires in ${TOKEN_TTL_HOURS} hours and can only be used once.</p>
       <p>If this wasn't you, ignore this email and the address will not be linked.</p>
     `;

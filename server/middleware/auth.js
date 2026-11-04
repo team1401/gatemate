@@ -1,13 +1,16 @@
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 
-// Generate strong secret if not set
-const SECRET = process.env.JWT_SECRET || (() => {
-  const generated = crypto.randomBytes(64).toString('hex');
-  console.warn('[Auth] WARNING: Using generated JWT secret. Set JWT_SECRET in .env for production!');
-  console.warn('[Auth] Generated secret:', generated);
-  return generated;
-})();
+function resolveSecret() {
+  if (process.env.JWT_SECRET) return process.env.JWT_SECRET;
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('[Auth] JWT_SECRET must be set in production. Refusing to start.');
+  }
+  console.warn('[Auth] WARNING: JWT_SECRET is not set; using an ephemeral generated secret. Tokens will be invalidated on restart.');
+  return crypto.randomBytes(64).toString('hex');
+}
+
+const SECRET = resolveSecret();
 
 function authenticate(req, res, next) {
   const header = req.headers.authorization;
