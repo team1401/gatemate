@@ -1,14 +1,14 @@
 # GateMate — Layover Overlap Finder
 
 ## Overview
-Web app that helps PGTEK employees discover when they're at the same airport at the same time during business travel. Enter your upcoming flights, see who else from the team has overlapping layovers or connections.
+Web app that helps employees discover when they're at the same airport at the same time during business travel. Enter your upcoming flights, see who else from the team has overlapping layovers or connections.
 
 ## Domain
 gatemate.app
 
 ## Users
 - 20 initial (Nutanix deployment team)
-- 160 total PGTEK employees
+- 160 total employees
 - All business travelers with frequent layovers
 
 ## Critical Constraint: REAL FLIGHT DATA ONLY
@@ -18,7 +18,7 @@ gatemate.app
 - **Free tier:** 100 requests/month (too low for production)
 - **Basic plan:** $49.99/mo, 10,000 requests
 - **Recommendation:** Start with free tier for development, use BYOK pattern (users provide their own key) OR cache aggressively
-- **Alternative approach:** Let users enter flight number + date, look up real departure/arrival times and airports from the API, cache the result. Most PGTEK employees fly similar routes — caching will reduce API calls dramatically.
+- **Alternative approach:** Let users enter flight number + date, look up real departure/arrival times and airports from the API, cache the result. Most employees fly similar routes — caching will reduce API calls dramatically.
 - **Fallback:** AirLabs API (free tier: 1,000 requests/month) as secondary source
 
 ### Data Flow

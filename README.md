@@ -1,6 +1,6 @@
 # GateMate — Layover Overlap Finder
 
-Internal web app for PGTEK employees to discover when they have overlapping layovers at the same airport during business travel.
+Internal web app for employees to discover when they have overlapping layovers at the same airport during business travel.
 
 ## Quick Start
 

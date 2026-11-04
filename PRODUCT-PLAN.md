@@ -2,20 +2,20 @@
 
 **Version:** 1.0  
 **Date:** February 16, 2026  
-**Author:** Brian Smith, Senior Technology Consultant, PGTEK  
+**Author:** Brian Smith, Senior Technology Consultant, Company  
 **Status:** Draft for Strategic Review
 
 ---
 
 ## Executive Summary
 
-GateMate transforms the way distributed teams discover organic connection opportunities during business travel. Starting as an internal tool at PGTEK, it has proven the core value proposition: **when traveling coworkers know they're in the same airport at the same time, spontaneous collaboration happens**.
+GateMate transforms the way distributed teams discover organic connection opportunities during business travel. Starting as an internal tool at Company, it has proven the core value proposition: **when traveling coworkers know they're in the same airport at the same time, spontaneous collaboration happens**.
 
 This document outlines the path from single-tenant MVP to multi-tenant SaaS product with three pricing tiers (Starter, Business, Enterprise), serving consulting firms, enterprise sales teams, field service organizations, and distributed companies where travel is core to operations.
 
 **Market Opportunity:** 5.2M+ knowledge workers travel regularly for work (US only). Consulting, professional services, and enterprise sales represent $40B+ in annual T&E spend. Current solutions focus on booking and expense management—nobody solves the connection problem.
 
-**Go-to-Market:** Leverage PGTEK as proof of concept and case study. Target Nutanix partner ecosystem (400+ consulting partners) and professional services firms via LinkedIn outreach and content marketing.
+**Go-to-Market:** Leverage Company as proof of concept and case study. Target Nutanix partner ecosystem (400+ consulting partners) and professional services firms via LinkedIn outreach and content marketing.
 
 **Revenue Model:** $49-$399/month tiers based on team size and feature depth. At scale (10,000 users across 200 companies), projected ARR: $2.16M with 65-75% gross margin.
 
@@ -141,7 +141,7 @@ Unlike competitors who try to be everything (booking, expense, policy compliance
 
 ### Phase 1: MVP / Validation (Current → Month 2)
 
-**Goal:** Make the current PGTEK deployment commercially viable.
+**Goal:** Make the current Company deployment commercially viable.
 
 **What we have:**
 - ✓ Email ingestion via IMAP
@@ -238,7 +238,7 @@ Unlike competitors who try to be everything (booking, expense, policy compliance
 
 ## 4. Infrastructure Requirements
 
-### Current (PGTEK Internal)
+### Current (Company Internal)
 
 **Deployment:**
 - Single Docker container on home server (Ubuntu, Tailscale VPN access)
@@ -565,22 +565,22 @@ At 200 customers averaging $180/mo MRR (tier mix), total revenue = $36K/mo. Infr
 
 ### Phase 1: Proof of Concept (Month 0-3)
 
-**Objective:** Validate value prop with PGTEK, generate case study, get first testimonials.
+**Objective:** Validate value prop with Company, generate case study, get first testimonials.
 
 **Tactics:**
-1. **PGTEK internal launch**
+1. **Company internal launch**
    - Onboard all 160 employees (target 60% adoption = 96 active users)
    - Track metrics: flights logged, bumps found, NPS score
    - Identify power users for testimonials
 
 2. **Case study development**
-   - Title: "How PGTEK Increased Team Connections 4x with GateMate"
+   - Title: "How Company Increased Team Connections 4x with GateMate"
    - Data points: X bumps in 90 days, Y hours of face time, Z% user satisfaction
    - Quotes from CEO, traveling consultants
 
 3. **Landing page + positioning**
    - Hero: "Your team is closer than you think. Find them."
-   - Social proof: PGTEK logo, user quotes
+   - Social proof: Company logo, user quotes
    - Clear pricing, 14-day trial CTA
 
 ---
@@ -615,7 +615,7 @@ At 200 customers averaging $180/mo MRR (tier mix), total revenue = $36K/mo. Infr
 3. **Nutanix Partner Ecosystem**
    - Present at Nutanix partner summit (if available)
    - Email to Nutanix partner mailing list (Brian's credibility)
-   - Offer: "PGTEK uses this. You should too."
+   - Offer: "Company uses this. You should too."
 
 4. **Referral Program**
    - Existing customers get 1 month free for each referral (new paying customer)
@@ -816,7 +816,7 @@ At 200 customers averaging $180/mo MRR (tier mix), total revenue = $36K/mo. Infr
 - [ ] Set up Stripe account, test subscription flows
 - [ ] Migrate SQLite → PostgreSQL (local dev, then Fly.io staging)
 - [ ] Draft Terms of Service + Privacy Policy (use Termly templates, attorney review)
-- [ ] Build landing page (value prop, pricing, trial signup, PGTEK testimonial)
+- [ ] Build landing page (value prop, pricing, trial signup, Company testimonial)
 - [ ] Deploy staging environment (Fly.io)
 - [ ] Implement basic multi-tenancy (tenant UUID, row-level security)
 
@@ -827,12 +827,12 @@ At 200 customers averaging $180/mo MRR (tier mix), total revenue = $36K/mo. Infr
 ### Days 31-60: MVP Launch
 
 - [ ] Deploy production environment (Fly.io + Postmark + Sentry)
-- [ ] Onboard 5 beta customers (PGTEK colleagues' networks, free trials)
+- [ ] Onboard 5 beta customers (Company colleagues' networks, free trials)
 - [ ] Implement Stripe webhooks (subscription.created, payment_failed, etc.)
 - [ ] Build user onboarding flow (email verify → invite team → forward flight)
 - [ ] Set up monitoring (UptimeRobot, Sentry alerts)
-- [ ] Migrate PGTEK to production multi-tenant instance
-- [ ] Write PGTEK case study (90-day data: X flights, Y bumps, quotes)
+- [ ] Migrate Company to production multi-tenant instance
+- [ ] Write Company case study (90-day data: X flights, Y bumps, quotes)
 
 **Milestone:** First paying customer ($49 Starter plan).
 
@@ -855,10 +855,10 @@ At 200 customers averaging $180/mo MRR (tier mix), total revenue = $36K/mo. Infr
 ## Appendix A: Founder Bio
 
 **Brian Smith**  
-Senior Technology Consultant, PGTEK  
+Senior Technology Consultant, Company  
 Nutanix Certified Professional (NCP), 8+ years infrastructure consulting
 
-Brian travels 60-80 days/year deploying Nutanix hyperconverged infrastructure for enterprise customers across North America. After missing countless opportunities to connect with PGTEK teammates in airports, he built GateMate as an internal tool in 2025. When the entire company adopted it within 90 days and bump frequency increased 4x, he realized the product had legs beyond PGTEK.
+Brian travels 60-80 days/year deploying Nutanix hyperconverged infrastructure for enterprise customers across North America. After missing countless opportunities to connect with Company teammates in airports, he built GateMate as an internal tool in 2025. When the entire company adopted it within 90 days and bump frequency increased 4x, he realized the product had legs beyond Company.
 
 Brian lives full-time in a custom-built Airstream with his partner and dog, working remotely from national parks, customer sites, and airport lounges. He's deeply embedded in the Nutanix partner ecosystem (400+ consulting firms) and has firsthand insight into the pain points of distributed, travel-heavy teams.
 
@@ -972,7 +972,7 @@ def detect_overlaps(flight):
 | 1.0 | Feb 16, 2026 | Brian Smith | Initial draft for strategic review |
 
 **Distribution:**
-- Internal review (PGTEK leadership)
+- Internal review (Company leadership)
 - Potential investors (on request)
 - Strategic partners (Nutanix ecosystem)
 
@@ -983,5 +983,5 @@ def detect_overlaps(flight):
 **Contact:**  
 Brian Smith  
 w.brian.smith@gmail.com  
-Senior Technology Consultant, PGTEK  
+Senior Technology Consultant, Company  
 Founder, GateMate

@@ -34,7 +34,7 @@ ssh helix@plex "docker ps | grep gatemate"
 ```bash
 curl -X POST http://100.97.65.28:3111/api/auth/register \
   -H "Content-Type: application/json" \
-  -d '{"email":"test@pgtek.com","password":"test123","name":"Test User"}'
+  -d '{"email":"test@company.com","password":"test123","name":"Test User"}'
 ```
 
 ### Manual Weekly Reminder

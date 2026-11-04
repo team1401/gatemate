@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * GateMate Demo Data Seeder
- * Creates realistic PGTEK employee accounts with upcoming flights and overlaps
+ * Creates realistic Company employee accounts with upcoming flights and overlaps
  * Run: node seed-demo.js (from the gatebump directory)
  */
 
@@ -15,20 +15,20 @@ db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
 // Demo password for all accounts
-const DEMO_PASSWORD = bcrypt.hashSync('pgtek2026', 10);
+const DEMO_PASSWORD = bcrypt.hashSync('company2026', 10);
 
 // ============================================================
-// PGTEK Demo Users
+// Company Demo Users
 // ============================================================
 const users = [
-  { email: 'bsmith@pgtek.com', name: 'Brian Smith', is_admin: 1 },
-  { email: 'sbollar@pgtek.com', name: 'Scott Bollar', is_admin: 0 },
-  { email: 'jpeterson@pgtek.com', name: 'Jordan Peterson', is_admin: 0 },
-  { email: 'tphibbs@pgtek.com', name: 'Tanner Phibbs', is_admin: 0 },
-  { email: 'mwilson@pgtek.com', name: 'Mike Wilson', is_admin: 0 },
-  { email: 'kchen@pgtek.com', name: 'Karen Chen', is_admin: 0 },
-  { email: 'rjones@pgtek.com', name: 'Ryan Jones', is_admin: 0 },
-  { email: 'agarcia@pgtek.com', name: 'Ana Garcia', is_admin: 0 },
+  { email: 'bsmith@company.com', name: 'Brian Smith', is_admin: 1 },
+  { email: 'sbollar@company.com', name: 'Scott Bollar', is_admin: 0 },
+  { email: 'jpeterson@company.com', name: 'Jordan Peterson', is_admin: 0 },
+  { email: 'tphibbs@company.com', name: 'Tanner Phibbs', is_admin: 0 },
+  { email: 'mwilson@company.com', name: 'Mike Wilson', is_admin: 0 },
+  { email: 'kchen@company.com', name: 'Karen Chen', is_admin: 0 },
+  { email: 'rjones@company.com', name: 'Ryan Jones', is_admin: 0 },
+  { email: 'agarcia@company.com', name: 'Ana Garcia', is_admin: 0 },
 ];
 
 // ============================================================
@@ -38,7 +38,7 @@ const users = [
 const trips = [
   // Brian — LaPlace, LA deployment (March 1-4)
   {
-    userEmail: 'bsmith@pgtek.com',
+    userEmail: 'bsmith@company.com',
     tripName: 'LaPlace LA - Nutanix Deploy',
     flights: [
       { flight_number: 'AA2847', flight_date: '2026-03-01', airline_name: 'American Airlines',
@@ -57,7 +57,7 @@ const trips = [
   },
   // Jordan — Atlanta client site (March 3-7)
   {
-    userEmail: 'jpeterson@pgtek.com',
+    userEmail: 'jpeterson@company.com',
     tripName: 'Atlanta - Delta Health Systems',
     flights: [
       { flight_number: 'DL1822', flight_date: '2026-03-03', airline_name: 'Delta Air Lines',
@@ -76,7 +76,7 @@ const trips = [
   },
   // Tanner — Chicago deployment (March 10-14)
   {
-    userEmail: 'tphibbs@pgtek.com',
+    userEmail: 'tphibbs@company.com',
     tripName: 'Chicago - Midwest Financial',
     flights: [
       { flight_number: 'UA456', flight_date: '2026-03-10', airline_name: 'United Airlines',
@@ -91,7 +91,7 @@ const trips = [
   },
   // Scott — SLC Conference + Denver client (March 3-7) ← OVERLAP with Jordan at DFW!
   {
-    userEmail: 'sbollar@pgtek.com',
+    userEmail: 'sbollar@company.com',
     tripName: 'SLC Conference + Denver',
     flights: [
       { flight_number: 'DL1550', flight_date: '2026-03-03', airline_name: 'Delta Air Lines',
@@ -114,7 +114,7 @@ const trips = [
   },
   // Mike — Phoenix training (March 17-21) ← OVERLAP with Brian at PHX!
   {
-    userEmail: 'mwilson@pgtek.com',
+    userEmail: 'mwilson@company.com',
     tripName: 'Phoenix - Nutanix NCI Training',
     flights: [
       { flight_number: 'AA1234', flight_date: '2026-03-17', airline_name: 'American Airlines',
@@ -133,7 +133,7 @@ const trips = [
   },
   // Karen — San Jose Nutanix HQ (March 24-28)
   {
-    userEmail: 'kchen@pgtek.com',
+    userEmail: 'kchen@company.com',
     tripName: 'San Jose - Nutanix HQ Meeting',
     flights: [
       { flight_number: 'UA890', flight_date: '2026-03-24', airline_name: 'United Airlines',
@@ -152,7 +152,7 @@ const trips = [
   },
   // Ryan — Dallas deployment (March 31 - April 4) 
   {
-    userEmail: 'rjones@pgtek.com',
+    userEmail: 'rjones@company.com',
     tripName: 'Dallas - TechStar Industries',
     flights: [
       { flight_number: 'AA2200', flight_date: '2026-03-31', airline_name: 'American Airlines',
@@ -167,7 +167,7 @@ const trips = [
   },
   // Ana — Boston client (April 7-11) + DEN layover ← OVERLAP with Karen returning through DEN
   {
-    userEmail: 'agarcia@pgtek.com',
+    userEmail: 'agarcia@company.com',
     tripName: 'Boston - Northeast Hospital Group',
     flights: [
       { flight_number: 'JB416', flight_date: '2026-04-07', airline_name: 'JetBlue',
@@ -182,7 +182,7 @@ const trips = [
   },
   // Brian — second trip: Denver NC2 residency (March 24-28) ← OVERLAP with Karen at DEN!
   {
-    userEmail: 'bsmith@pgtek.com',
+    userEmail: 'bsmith@company.com',
     tripName: 'Denver - NC2 Residency Week',
     flights: [
       { flight_number: 'UA445', flight_date: '2026-03-24', airline_name: 'United Airlines',
@@ -197,7 +197,7 @@ const trips = [
   },
   // Jordan — second trip: San Jose Nutanix (March 24-28) ← OVERLAP with Karen at SFO!
   {
-    userEmail: 'jpeterson@pgtek.com',
+    userEmail: 'jpeterson@company.com',
     tripName: 'San Jose - Nutanix Partner Summit',
     flights: [
       { flight_number: 'UA892', flight_date: '2026-03-24', airline_name: 'United Airlines',
@@ -217,21 +217,21 @@ const trips = [
 // ============================================================
 const overlaps = [
   {
-    user_a: 'sbollar@pgtek.com', user_b: 'jpeterson@pgtek.com',
+    user_a: 'sbollar@company.com', user_b: 'jpeterson@company.com',
     airport: 'DFW', airport_name: 'Dallas/Fort Worth',
     overlap_start: '2026-03-07T18:30:00', overlap_end: '2026-03-07T20:30:00',
     overlap_minutes: 120,
     desc: 'Scott arriving from DEN, Jordan arriving from ATL — both connecting through DFW same evening!'
   },
   {
-    user_a: 'kchen@pgtek.com', user_b: 'jpeterson@pgtek.com',
+    user_a: 'kchen@company.com', user_b: 'jpeterson@company.com',
     airport: 'SFO', airport_name: 'San Francisco International',
     overlap_start: '2026-03-24T09:45:00', overlap_end: '2026-03-24T10:00:00',
     overlap_minutes: 15,
     desc: 'Karen and Jordan both arriving SFO same morning for Nutanix meetings'
   },
   {
-    user_a: 'bsmith@pgtek.com', user_b: 'kchen@pgtek.com',
+    user_a: 'bsmith@company.com', user_b: 'kchen@company.com',
     airport: 'DEN', airport_name: 'Denver International',
     overlap_start: '2026-03-28T17:00:00', overlap_end: '2026-03-28T18:00:00',
     overlap_minutes: 60,
@@ -313,8 +313,8 @@ console.log(`
   Flights:  ${trips.reduce((sum, t) => sum + t.flights.length, 0)}
   Overlaps: ${overlaps.length}
 
-  Login: any @pgtek.com email / password: pgtek2026
-  Admin: bsmith@pgtek.com
+  Login: any @company.com email / password: company2026
+  Admin: bsmith@company.com
 `);
 
 db.close();

@@ -160,7 +160,7 @@ db.prepare("UPDATE users SET is_admin = 1 WHERE id = 1").run();
 // Seed default allowed_domains if not present
 const existing = db.prepare("SELECT key FROM settings WHERE key = 'allowed_domains'").get();
 if (!existing) {
-  db.prepare("INSERT INTO settings (key, value) VALUES ('allowed_domains', ?)").run(JSON.stringify(["pgtek.com"]));
+  db.prepare("INSERT INTO settings (key, value) VALUES ('allowed_domains', ?)").run(JSON.stringify(["company.com"]));
 }
 
 module.exports = db;

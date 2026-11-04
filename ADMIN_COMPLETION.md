@@ -4,7 +4,7 @@
 
 ### What was done
 - [x] Added `is_admin` column to users table (migration-safe)
-- [x] Created `settings` table with default `allowed_domains: ["pgtek.com"]`
+- [x] Created `settings` table with default `allowed_domains: ["company.com"]`
 - [x] User ID 1 auto-promoted to admin; Brian (ID 2) also set to admin
 - [x] `requireAdmin` middleware on all `/api/admin/*` routes (403 if not admin)
 - [x] Registration endpoint checks email domain against whitelist
@@ -36,7 +36,7 @@ All require admin auth (`Bearer` token + `is_admin = 1`):
 - `GET/PUT /api/admin/settings`
 
 ### Testing verified
-- Domain whitelist blocks non-pgtek.com registration ✓
+- Domain whitelist blocks non-company.com registration ✓
 - Admin users endpoint returns all users ✓
 - Settings endpoint returns allowed_domains ✓
 - `/api/auth/me` returns `is_admin` field ✓

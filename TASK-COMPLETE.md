@@ -16,8 +16,8 @@ Three automated email notification features have been successfully added to Gate
 - Brief explanation of how GateMate works
 - Clear CTA: "Forward your flight confirmation emails to flights@gatemate.app"
 - Shows count of coworkers from same domain already using the app
-  - Example: "You're joining 4 other teammates from @pgtek.com!"
-  - Or: "You're the first from @pgtek.com — invite your teammates!"
+  - Example: "You're joining 4 other teammates from @company.com!"
+  - Or: "You're the first from @company.com — invite your teammates!"
 - Link to the app
 
 **Implementation:** `server/routes/auth.js` + `server/services/emailSender.js`
@@ -159,7 +159,7 @@ These require a real user to test:
 curl -X POST http://100.97.65.28:3111/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "yourtest@pgtek.com",
+    "email": "yourtest@company.com",
     "password": "testpass123",
     "name": "Test User"
   }'

@@ -72,7 +72,7 @@ All three email notification features have been successfully implemented and dep
    curl -X POST http://100.97.65.28:3111/api/auth/register \
      -H "Content-Type: application/json" \
      -d '{
-       "email": "test@pgtek.com",
+       "email": "test@company.com",
        "password": "testpass123",
        "name": "Test User"
      }'
@@ -82,7 +82,7 @@ All three email notification features have been successfully implemented and dep
    ```bash
    ssh helix@plex "docker logs gatemate -f"
    ```
-   Look for: `[EMAIL] Sent: Welcome to GateMate! ✈️ to test@pgtek.com`
+   Look for: `[EMAIL] Sent: Welcome to GateMate! ✈️ to test@company.com`
 
 3. **Check the user's email inbox** for the welcome email
 
