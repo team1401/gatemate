@@ -154,6 +154,19 @@ try {
   db.exec("ALTER TABLE pending_trips ADD COLUMN imap_message_id TEXT");
 }
 
+// Migration: password reset tokens (stored as SHA-256 hashes, single-use, short-lived)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS password_resets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token_hash TEXT NOT NULL UNIQUE,
+    expires_at INTEGER NOT NULL,
+    used_at INTEGER,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_password_resets_user ON password_resets(user_id);
+`);
+
 // Ensure first user is admin
 db.prepare("UPDATE users SET is_admin = 1 WHERE id = 1").run();
 

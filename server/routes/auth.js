@@ -136,30 +136,72 @@ router.post('/admin-reset', authenticate, requireAdmin, (req, res) => {
   }
 });
 
-// Self-service: forgot password - sends temp password via email
+const RESET_TOKEN_TTL_MS = 30 * 60 * 1000;
+
+function hashResetToken(token) {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+// Self-service: forgot password - emails a single-use reset link.
+// The password is NOT changed here; it only changes when the link is redeemed.
 router.post('/reset-password', (req, res) => {
   try {
     const { email } = req.body;
-    if (!email) return res.status(400).json({ error: 'Email is required' });
+    if (!email || typeof email !== 'string') return res.status(400).json({ error: 'Email is required' });
     // Always return success to avoid leaking user existence
     const user = db.prepare('SELECT id, email, name FROM users WHERE email = ?').get(email.toLowerCase());
     if (user) {
-      const tempPassword = crypto.randomBytes(4).toString('hex'); // 8-char hex
-      const hash = bcrypt.hashSync(tempPassword, 10);
-      db.prepare('UPDATE users SET password = ?, token_version = COALESCE(token_version, 0) + 1 WHERE id = ?').run(hash, user.id);
+      const token = crypto.randomBytes(32).toString('hex');
+      const now = Date.now();
+      db.transaction(() => {
+        db.prepare('DELETE FROM password_resets WHERE user_id = ? AND used_at IS NULL').run(user.id);
+        db.prepare('INSERT INTO password_resets (user_id, token_hash, expires_at) VALUES (?, ?, ?)')
+          .run(user.id, hashResetToken(token), now + RESET_TOKEN_TTL_MS);
+      })();
       const firstName = user.name.split(' ')[0];
-      const appUrl = process.env.APP_URL || 'https://gatemate.app';
+      const appUrl = (process.env.APP_URL || 'https://gatemate.app').replace(/\/+$/, '');
+      const resetUrl = `${appUrl}/reset-password?token=${token}`;
       sendEmail(user.email, 'GateMate Password Reset', `
         <h2>Password Reset</h2>
         <p>Hi ${firstName},</p>
-        <p>Your temporary password is:</p>
-        <div class="highlight"><p style="font-size:24px;font-weight:bold;margin:0;">${tempPassword}</p></div>
-        <p>Please <a href="${appUrl}">log in</a> and change your password.</p>
+        <p>We received a request to reset your GateMate password. Click the link below to choose a new one:</p>
+        <p><a href="${resetUrl}">Reset your password</a></p>
+        <p>This link expires in 30 minutes and can only be used once. If you didn't request this, you can ignore this email &mdash; your password has not been changed.</p>
       `).catch(err => console.error('Reset email failed:', err.message));
     }
-    res.json({ success: true, message: 'If that email exists, a temporary password has been sent.' });
+    res.json({ success: true, message: 'If that email exists, a password reset link has been sent.' });
   } catch (err) {
     console.error('Reset password error:', err);
+    res.status(500).json({ error: 'Reset failed' });
+  }
+});
+
+// Redeem a reset token and set a new password
+router.post('/reset-password/confirm', (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+    if (!token || typeof token !== 'string' || !newPassword || typeof newPassword !== 'string') {
+      return res.status(400).json({ error: 'Token and newPassword are required' });
+    }
+    if (newPassword.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    if (newPassword.length > 128) return res.status(400).json({ error: 'Password must be at most 128 characters' });
+
+    const tokenHash = hashResetToken(token);
+    const hash = bcrypt.hashSync(newPassword, 10);
+    const redeemed = db.transaction(() => {
+      const now = Date.now();
+      const reset = db.prepare('SELECT id, user_id FROM password_resets WHERE token_hash = ? AND used_at IS NULL AND expires_at > ?').get(tokenHash, now);
+      if (!reset) return false;
+      const claim = db.prepare('UPDATE password_resets SET used_at = ? WHERE id = ? AND used_at IS NULL').run(now, reset.id);
+      if (claim.changes !== 1) return false;
+      db.prepare('UPDATE users SET password = ?, token_version = COALESCE(token_version, 0) + 1 WHERE id = ?').run(hash, reset.user_id);
+      db.prepare('DELETE FROM password_resets WHERE user_id = ? AND used_at IS NULL').run(reset.user_id);
+      return true;
+    })();
+    if (!redeemed) return res.status(400).json({ error: 'Invalid or expired reset link' });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Reset password confirm error:', err);
     res.status(500).json({ error: 'Reset failed' });
   }
 });

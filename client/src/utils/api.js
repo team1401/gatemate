@@ -19,6 +19,7 @@ export const api = {
   login: (email, password) => request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
   register: (email, password, name) => request('/auth/register', { method: 'POST', body: JSON.stringify({ email, password, name }) }),
   resetPassword: (email) => request('/auth/reset-password', { method: 'POST', body: JSON.stringify({ email }) }),
+  confirmPasswordReset: (token, newPassword) => request('/auth/reset-password/confirm', { method: 'POST', body: JSON.stringify({ token, newPassword }) }),
   me: () => request('/auth/me'),
   stats: () => request('/users/stats'),
   lookupFlight: (flight_number, flight_date, dep_airport) => request('/trips/lookup', { method: 'POST', body: JSON.stringify({ flight_number, flight_date, dep_airport }) }),
