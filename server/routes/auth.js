@@ -5,6 +5,12 @@ const db = require('../db');
 const crypto = require('crypto');
 const { SECRET, authenticate, requireAdmin } = require('../middleware/auth');
 const { sendWelcomeEmail, sendEmail } = require('../services/emailSender');
+const {
+  createVerificationToken,
+  redeemVerificationToken,
+  releaseStaleClaim,
+  sendVerificationEmail,
+} = require('../services/emailVerification');
 const router = express.Router();
 
 router.post('/register', (req, res) => {
@@ -27,55 +33,101 @@ router.post('/register', (req, res) => {
     if (password.length > 128) {
       return res.status(400).json({ error: 'Password must be at most 128 characters' });
     }
-    const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email.toLowerCase());
-    if (existing) {
-      // Don't reveal that email exists - use generic message
-      return res.status(400).json({ error: 'Registration failed. Please contact support if you believe this is an error.' });
-    }
+    const normalized = email.toLowerCase().trim();
+    const genericError = { error: 'Registration failed. Please contact support if you believe this is an error.' };
 
     // Check domain whitelist
     const setting = db.prepare("SELECT value FROM settings WHERE key = 'allowed_domains'").get();
     if (setting) {
       const domains = JSON.parse(setting.value);
       if (domains.length > 0) {
-        const emailDomain = email.toLowerCase().split('@')[1];
+        const emailDomain = normalized.split('@')[1];
         if (!domains.includes(emailDomain)) {
           // Generic message - don't leak domain policy
-          return res.status(400).json({ error: 'Registration failed. Please contact support if you believe this is an error.' });
+          return res.status(400).json(genericError);
         }
       }
     }
 
+    // Reject addresses already owned (verified or with a live verification link).
+    // Generic message - don't reveal that the email exists
+    if (!releaseStaleClaim(normalized)) {
+      return res.status(400).json(genericError);
+    }
+
     const hash = bcrypt.hashSync(password, 10);
-    const result = db.prepare('INSERT INTO users (email, password, name) VALUES (?, ?, ?)').run(email.toLowerCase(), hash, name.trim());
-    // Auto-add registration email to user_emails
-    db.prepare('INSERT OR IGNORE INTO user_emails (user_id, email, verified) VALUES (?, ?, 1)').run(result.lastInsertRowid, email.toLowerCase());
-    const newUser = db.prepare('SELECT id, email, name, is_admin, onboarding_seen, token_version FROM users WHERE id = ?').get(result.lastInsertRowid);
-    
-    // Send welcome email (async, non-blocking)
-    (async () => {
-      try {
-        const domain = email.toLowerCase().split('@')[1];
-        const coworkerCount = db.prepare(
-          "SELECT COUNT(*) as count FROM users WHERE email LIKE ? AND id != ?"
-        ).get(`%@${domain}`, newUser.id).count;
-        const appUrl = process.env.APP_URL || 'http://100.97.65.28:3111';
-        await sendWelcomeEmail(newUser, coworkerCount, appUrl);
-      } catch (err) {
-        console.error('Failed to send welcome email:', err.message);
-      }
+    const { userId, userEmailId } = db.transaction(() => {
+      const result = db.prepare('INSERT INTO users (email, password, name, email_verified) VALUES (?, ?, ?, 0)').run(normalized, hash, name.trim());
+      const ue = db.prepare('INSERT INTO user_emails (user_id, email, verified) VALUES (?, ?, 0)').run(result.lastInsertRowid, normalized);
+      return { userId: result.lastInsertRowid, userEmailId: ue.lastInsertRowid };
     })();
-    
-    const token = jwt.sign({
-      id: newUser.id,
-      email: newUser.email,
-      name: newUser.name,
-      token_version: newUser.token_version || 0
-    }, SECRET, { expiresIn: '7d' });
-    res.json({ token, user: newUser });
+    const newUser = db.prepare('SELECT id, email, name FROM users WHERE id = ?').get(userId);
+
+    const token = createVerificationToken(userEmailId);
+    sendVerificationEmail(newUser.email, token, newUser, true)
+      .catch(err => console.error('Failed to send verification email:', err.message));
+
+    // No session is issued until the address is verified
+    res.json({
+      success: true,
+      verification_required: true,
+      message: 'Check your email for a link to verify your address and activate your account.'
+    });
   } catch (err) {
     console.error('Register error:', err);
     res.status(500).json({ error: 'Registration failed' });
+  }
+});
+
+router.post('/verify-email', (req, res) => {
+  try {
+    const result = redeemVerificationToken(req.body?.token);
+    if (!result) {
+      return res.status(400).json({ error: 'This verification link is invalid or has expired.' });
+    }
+
+    if (result.isPrimary) {
+      // Send welcome email (async, non-blocking)
+      (async () => {
+        try {
+          const user = db.prepare('SELECT id, email, name FROM users WHERE id = ?').get(result.userId);
+          const domain = user.email.split('@')[1];
+          const coworkerCount = db.prepare(
+            "SELECT COUNT(*) as count FROM users WHERE email LIKE ? AND id != ? AND email_verified = 1"
+          ).get(`%@${domain}`, user.id).count;
+          const appUrl = process.env.APP_URL || 'http://100.97.65.28:3111';
+          await sendWelcomeEmail(user, coworkerCount, appUrl);
+        } catch (err) {
+          console.error('Failed to send welcome email:', err.message);
+        }
+      })();
+    }
+
+    res.json({ success: true, email: result.email, is_primary: result.isPrimary });
+  } catch (err) {
+    console.error('Verify email error:', err);
+    res.status(500).json({ error: 'Verification failed' });
+  }
+});
+
+router.post('/resend-verification', (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email || typeof email !== 'string') return res.status(400).json({ error: 'Email is required' });
+    // Always return success to avoid leaking user existence
+    const user = db.prepare('SELECT id, email, name, email_verified FROM users WHERE email = ?').get(email.toLowerCase().trim());
+    if (user && !user.email_verified) {
+      const entry = db.prepare('SELECT id FROM user_emails WHERE user_id = ? AND email = ?').get(user.id, user.email);
+      if (entry) {
+        const token = createVerificationToken(entry.id);
+        sendVerificationEmail(user.email, token, user, true)
+          .catch(err => console.error('Failed to send verification email:', err.message));
+      }
+    }
+    res.json({ success: true, message: 'If that account is awaiting verification, a new link has been sent.' });
+  } catch (err) {
+    console.error('Resend verification error:', err);
+    res.status(500).json({ error: 'Failed to resend verification' });
   }
 });
 
@@ -88,6 +140,12 @@ router.post('/login', (req, res) => {
     const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email.toLowerCase());
     if (!user || !bcrypt.compareSync(password, user.password)) {
       return res.status(401).json({ error: 'Invalid email or password' });
+    }
+    if (!user.email_verified) {
+      return res.status(403).json({
+        error: 'Please verify your email address before signing in. Check your inbox for the verification link.',
+        verification_required: true
+      });
     }
     const token = jwt.sign({
       id: user.id,

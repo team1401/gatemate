@@ -12,6 +12,8 @@ export default function Login() {
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotMsg, setForgotMsg] = useState('');
   const [forgotLoading, setForgotLoading] = useState(false);
+  const [needsVerification, setNeedsVerification] = useState(false);
+  const [resendMsg, setResendMsg] = useState('');
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -29,15 +31,28 @@ export default function Login() {
     }
   };
 
+  const handleResend = async () => {
+    setResendMsg('');
+    try {
+      const data = await api.resendVerification(email);
+      setResendMsg(data.message);
+    } catch (err) {
+      setResendMsg(err.message);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setNeedsVerification(false);
+    setResendMsg('');
     setLoading(true);
     try {
       await login(email, password);
       navigate('/');
     } catch (err) {
       setError(err.message);
+      setNeedsVerification(!!err.data?.verification_required);
     } finally {
       setLoading(false);
     }
@@ -58,6 +73,12 @@ export default function Login() {
           <h2 className="text-lg font-semibold text-navy mb-4">Sign In</h2>
           
           {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded p-3 mb-4">{error}</div>}
+          {needsVerification && (
+            <div className="text-sm text-slate-600 mb-4">
+              <button type="button" onClick={handleResend} className="text-amber font-medium hover:underline">Resend verification email</button>
+              {resendMsg && <p className="text-xs text-slate-500 mt-1">{resendMsg}</p>}
+            </div>
+          )}
 
           <label className="block mb-3">
             <span className="text-sm font-medium text-slate-600">Email</span>

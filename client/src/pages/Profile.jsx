@@ -9,6 +9,7 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [adding, setAdding] = useState(false);
+  const [notice, setNotice] = useState('');
 
   useEffect(() => {
     api.getEmails()
@@ -22,14 +23,27 @@ export default function Profile() {
     if (!newEmail.trim()) return;
     setAdding(true);
     setError('');
+    setNotice('');
     try {
       const added = await api.addEmail(newEmail.trim());
       setEmails(prev => [...prev, added]);
       setNewEmail('');
+      setNotice(`We sent a verification link to ${added.email}. Emails from it will be matched to your account once it's verified.`);
     } catch (err) {
       setError(err.message);
     }
     setAdding(false);
+  };
+
+  const handleResend = async (entry) => {
+    setError('');
+    setNotice('');
+    try {
+      await api.resendEmailVerification(entry.id);
+      setNotice(`Verification link re-sent to ${entry.email}.`);
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
   const handleRemove = async (id) => {
@@ -64,10 +78,11 @@ export default function Profile() {
         <h2 className="font-semibold text-navy mb-1">Email Addresses</h2>
         <p className="text-xs text-slate-500 mb-4">
           Add personal email addresses you might forward flight confirmations from.
-          We'll match emails from any of these addresses to your account.
+          Once you verify an address, we'll match emails from it to your account.
         </p>
 
         {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded p-2 mb-3">{error}</div>}
+        {notice && <div className="bg-blue-50 border border-blue-200 text-blue-700 text-sm rounded p-2 mb-3">{notice}</div>}
 
         {loading ? (
           <p className="text-slate-400 text-sm py-4 text-center">Loading...</p>
@@ -79,6 +94,12 @@ export default function Profile() {
                   <span className="text-sm text-navy truncate">{e.email}</span>
                   {e.is_primary && (
                     <span className="shrink-0 text-xs bg-amber/20 text-amber-700 font-medium px-2 py-0.5 rounded">Primary</span>
+                  )}
+                  {!e.verified && (
+                    <>
+                      <span className="shrink-0 text-xs bg-slate-200 text-slate-600 font-medium px-2 py-0.5 rounded">Unverified</span>
+                      <button onClick={() => handleResend(e)} className="shrink-0 text-xs text-amber font-medium hover:underline">Resend</button>
+                    </>
                   )}
                 </div>
                 {!e.is_primary && (
