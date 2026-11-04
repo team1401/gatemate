@@ -94,10 +94,11 @@ async function processEmail(parsed) {
   // Find user by email — only addresses whose ownership has been verified
   let user = db.prepare('SELECT id, email FROM users WHERE LOWER(email) = ? AND email_verified = 1').get(senderEmail);
   if (!user) {
-    const emailEntry = db.prepare('SELECT user_id FROM user_emails WHERE LOWER(email) = ? AND verified = 1').get(senderEmail);
-    if (emailEntry) {
-      user = db.prepare('SELECT id, email FROM users WHERE id = ?').get(emailEntry.user_id);
-    }
+    user = db.prepare(`
+      SELECT u.id, u.email FROM user_emails ue
+      JOIN users u ON u.id = ue.user_id
+      WHERE LOWER(ue.email) = ? AND ue.verified = 1 AND u.email_verified = 1
+    `).get(senderEmail);
   }
   if (!user) {
     console.log(`[EmailPoller] No user found for ${senderEmail}, skipping`);
