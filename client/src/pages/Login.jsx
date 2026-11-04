@@ -23,7 +23,7 @@ export default function Login() {
     setForgotMsg('');
     try {
       await api.resetPassword(forgotEmail);
-      setForgotMsg('Check your email for a temporary password.');
+      setForgotMsg('If that email is registered, a password reset link has been sent.');
     } catch (err) {
       setForgotMsg(err.message);
     } finally {
@@ -119,7 +119,7 @@ export default function Login() {
               <div className="flex gap-2">
                 <button type="submit" disabled={forgotLoading}
                   className="flex-1 bg-navy text-white font-semibold py-2 rounded hover:bg-navy/90 disabled:opacity-50">
-                  {forgotLoading ? 'Sending...' : 'Send Temp Password'}
+                  {forgotLoading ? 'Sending...' : 'Send Reset Link'}
                 </button>
                 <button type="button" onClick={() => setShowForgot(false)}
                   className="px-4 py-2 border border-slate-300 rounded text-slate-600 hover:bg-slate-50">Cancel</button>

@@ -67,6 +67,7 @@ app.use(globalLimiter);
 // API routes with specific rate limiters
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
+app.use('/api/auth/reset-password', authLimiter);
 app.use('/api/auth/resend-verification', authLimiter);
 app.use('/api/auth', authRoutes);
 app.use('/api/trips/lookup', flightLookupLimiter);
