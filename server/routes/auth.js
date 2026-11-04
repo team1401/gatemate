@@ -128,7 +128,10 @@ router.post('/admin-reset', authenticate, requireAdmin, (req, res) => {
     const user = db.prepare('SELECT id FROM users WHERE email = ?').get(email.toLowerCase());
     if (!user) return res.status(404).json({ error: 'User not found' });
     const hash = bcrypt.hashSync(newPassword, 10);
-    db.prepare('UPDATE users SET password = ?, token_version = COALESCE(token_version, 0) + 1 WHERE id = ?').run(hash, user.id);
+    db.transaction(() => {
+      db.prepare('UPDATE users SET password = ?, token_version = COALESCE(token_version, 0) + 1 WHERE id = ?').run(hash, user.id);
+      db.prepare('DELETE FROM password_resets WHERE user_id = ? AND used_at IS NULL').run(user.id);
+    })();
     res.json({ success: true });
   } catch (err) {
     console.error('Admin reset error:', err);
