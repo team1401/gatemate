@@ -28,6 +28,13 @@ function getTransporter() {
   return transporter;
 }
 
+const HTML_ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+
+function escapeHtml(value) {
+  if (value === null || value === undefined) return '';
+  return String(value).replace(/[&<>"']/g, ch => HTML_ESCAPES[ch]);
+}
+
 /**
  * Generate HTML email template with GateMate branding
  */
@@ -95,6 +102,10 @@ async function sendEmail(to, subject, htmlContent) {
       .replace(/<a[^>]*href="([^"]*)"[^>]*>[^<]*<\/a>/gi, '$1')
       .replace(/<[^>]+>/g, '')
       .replace(/&nbsp;/g, ' ')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
       .replace(/&amp;/g, '&')
       .replace(/\n{3,}/g, '\n\n')
       .trim();
@@ -128,12 +139,13 @@ async function sendEmail(to, subject, htmlContent) {
  * Send welcome email to new user
  */
 async function sendWelcomeEmail(user, coworkerCount, appUrl) {
-  const firstName = user.name.split(' ')[0];
-  const domain = user.email.split('@')[1];
+  const firstName = escapeHtml(user.name.split(' ')[0]);
+  const domain = escapeHtml(user.email.split('@')[1]);
+  const safeAppUrl = escapeHtml(appUrl);
 
   let coworkerText = '';
   if (coworkerCount > 0) {
-    coworkerText = `<p><strong>You're joining ${coworkerCount} other teammate${coworkerCount > 1 ? 's' : ''} from @${domain} already on GateMate!</strong> 🎉</p>`;
+    coworkerText = `<p><strong>You're joining ${escapeHtml(coworkerCount)} other teammate${coworkerCount > 1 ? 's' : ''} from @${domain} already on GateMate!</strong> 🎉</p>`;
   } else {
     coworkerText = `<p><strong>You're the first from @${domain} — invite your teammates!</strong></p>`;
   }
@@ -150,7 +162,7 @@ async function sendWelcomeEmail(user, coworkerCount, appUrl) {
     </div>
     
     <p>You can also manually add flights anytime:</p>
-    <a href="${appUrl}" class="cta">Go to GateMate →</a>
+    <a href="${safeAppUrl}" class="cta">Go to GateMate →</a>
     
     <p>Safe travels!</p>
   `;
@@ -162,8 +174,9 @@ async function sendWelcomeEmail(user, coworkerCount, appUrl) {
  * Send weekly reminder email
  */
 async function sendWeeklyReminder(user, stats, appUrl) {
-  const firstName = user.name.split(' ')[0];
-  const domain = user.email.split('@')[1];
+  const firstName = escapeHtml(user.name.split(' ')[0]);
+  const domain = escapeHtml(user.email.split('@')[1]);
+  const safeAppUrl = escapeHtml(appUrl);
 
   let upcomingTripsHtml = '';
   if (stats.upcomingTrips && stats.upcomingTrips.length > 0) {
@@ -171,7 +184,7 @@ async function sendWeeklyReminder(user, stats, appUrl) {
       <div class="highlight">
         <p style="margin-top: 0;"><strong>Your upcoming trips:</strong></p>
         <ul style="margin: 10px 0;">
-          ${stats.upcomingTrips.map(t => `<li>${t.name || 'Untitled Trip'} — ${t.flightCount} flight${t.flightCount > 1 ? 's' : ''}</li>`).join('')}
+          ${stats.upcomingTrips.map(t => `<li>${escapeHtml(t.name || 'Untitled Trip')} — ${escapeHtml(t.flightCount)} flight${t.flightCount > 1 ? 's' : ''}</li>`).join('')}
         </ul>
       </div>
     `;
@@ -179,7 +192,7 @@ async function sendWeeklyReminder(user, stats, appUrl) {
 
   let recentBumpsHtml = '';
   if (stats.recentBumps > 0) {
-    recentBumpsHtml = `<p>🎉 <strong>${stats.recentBumps} new layover match${stats.recentBumps > 1 ? 'es' : ''}</strong> found this week across the platform!</p>`;
+    recentBumpsHtml = `<p>🎉 <strong>${escapeHtml(stats.recentBumps)} new layover match${stats.recentBumps > 1 ? 'es' : ''}</strong> found this week across the platform!</p>`;
   }
 
   const content = `
@@ -194,11 +207,11 @@ async function sendWeeklyReminder(user, stats, appUrl) {
     
     ${upcomingTripsHtml}
     
-    <p>${stats.coworkerCount} teammate${stats.coworkerCount !== 1 ? 's' : ''} from @${domain} ${stats.coworkerCount === 1 ? 'is' : 'are'} using GateMate.</p>
+    <p>${escapeHtml(stats.coworkerCount)} teammate${stats.coworkerCount !== 1 ? 's' : ''} from @${domain} ${stats.coworkerCount === 1 ? 'is' : 'are'} using GateMate.</p>
     
     ${recentBumpsHtml}
     
-    <a href="${appUrl}" class="cta">View Your Trips →</a>
+    <a href="${safeAppUrl}" class="cta">View Your Trips →</a>
     
     <p>Happy travels!</p>
   `;
@@ -210,8 +223,14 @@ async function sendWeeklyReminder(user, stats, appUrl) {
  * Send layover match notification to both users
  */
 async function sendLayoverMatchEmail(userA, userB, overlap, appUrl) {
-  const firstNameA = userA.name.split(' ')[0];
-  const firstNameB = userB.name.split(' ')[0];
+  const firstNameA = escapeHtml(userA.name.split(' ')[0]);
+  const firstNameB = escapeHtml(userB.name.split(' ')[0]);
+  const nameA = escapeHtml(userA.name);
+  const nameB = escapeHtml(userB.name);
+  const emailA = escapeHtml(userA.email);
+  const emailB = escapeHtml(userB.email);
+  const airportLabel = escapeHtml(overlap.airport_name || overlap.airport);
+  const safeAppUrl = escapeHtml(appUrl);
 
   const overlapDate = new Date(overlap.overlap_start);
   const dateStr = overlapDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
@@ -232,7 +251,7 @@ async function sendLayoverMatchEmail(userA, userB, overlap, appUrl) {
   // Email to User A
   const contentA = `
     <h2>🎉 Layover Match!</h2>
-    <p>Great news, ${firstNameA}! You and <strong>${userB.name}</strong> will both be at <strong>${overlap.airport_name || overlap.airport}</strong> at the same time.</p>
+    <p>Great news, ${firstNameA}! You and <strong>${nameB}</strong> will both be at <strong>${airportLabel}</strong> at the same time.</p>
     
     <div class="highlight">
       <p style="margin-top: 0;"><strong>📅 ${dateStr}</strong></p>
@@ -242,15 +261,15 @@ async function sendLayoverMatchEmail(userA, userB, overlap, appUrl) {
     
     <p>Perfect timing to grab a drink at the terminal 🍺 or catch up before your next flight!</p>
     
-    <a href="${appUrl}" class="cta">View Details →</a>
+    <a href="${safeAppUrl}" class="cta">View Details →</a>
     
-    <p>Their contact: <strong>${userB.email}</strong></p>
+    <p>Their contact: <strong>${emailB}</strong></p>
   `;
 
   // Email to User B
   const contentB = `
     <h2>🎉 Layover Match!</h2>
-    <p>Great news, ${firstNameB}! You and <strong>${userA.name}</strong> will both be at <strong>${overlap.airport_name || overlap.airport}</strong> at the same time.</p>
+    <p>Great news, ${firstNameB}! You and <strong>${nameA}</strong> will both be at <strong>${airportLabel}</strong> at the same time.</p>
     
     <div class="highlight">
       <p style="margin-top: 0;"><strong>📅 ${dateStr}</strong></p>
@@ -260,9 +279,9 @@ async function sendLayoverMatchEmail(userA, userB, overlap, appUrl) {
     
     <p>Perfect timing to grab a drink at the terminal 🍺 or catch up before your next flight!</p>
     
-    <a href="${appUrl}" class="cta">View Details →</a>
+    <a href="${safeAppUrl}" class="cta">View Details →</a>
     
-    <p>Their contact: <strong>${userA.email}</strong></p>
+    <p>Their contact: <strong>${emailA}</strong></p>
   `;
 
   const subject = `🎉 Layover Match! You and ${userB.name.split(' ')[0]} will both be at ${overlap.airport}`;
@@ -275,6 +294,7 @@ async function sendLayoverMatchEmail(userA, userB, overlap, appUrl) {
 }
 
 module.exports = {
+  escapeHtml,
   sendEmail,
   sendWelcomeEmail,
   sendWeeklyReminder,

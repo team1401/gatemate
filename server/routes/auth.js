@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const db = require('../db');
 const crypto = require('crypto');
 const { SECRET, authenticate, requireAdmin } = require('../middleware/auth');
-const { sendWelcomeEmail, sendEmail } = require('../services/emailSender');
+const { sendWelcomeEmail, sendEmail, escapeHtml } = require('../services/emailSender');
 const router = express.Router();
 
 router.post('/register', (req, res) => {
@@ -163,9 +163,9 @@ router.post('/reset-password', (req, res) => {
       const resetUrl = `${appUrl}/reset-password?token=${token}`;
       sendEmail(user.email, 'GateMate Password Reset', `
         <h2>Password Reset</h2>
-        <p>Hi ${firstName},</p>
+        <p>Hi ${escapeHtml(firstName)},</p>
         <p>We received a request to reset your GateMate password. Click the link below to choose a new one:</p>
-        <p><a href="${resetUrl}">Reset your password</a></p>
+        <p><a href="${escapeHtml(resetUrl)}">Reset your password</a></p>
         <p>This link expires in 30 minutes and can only be used once. If you didn't request this, you can ignore this email &mdash; your password has not been changed.</p>
       `).catch(err => console.error('Reset email failed:', err.message));
     }
